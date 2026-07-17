@@ -12,21 +12,10 @@ Mini sistema interno para administrar usuarios de una plataforma.
 ## 1. Base de datos
 
 ```bash
-# Instalación limpia
 mysql -h 127.0.0.1 -P 8889 -u root < sql/schema.sql
 
 # Si usas MAMP:
 # /Applications/MAMP/Library/bin/mysql -h 127.0.0.1 -P 8889 -u root < sql/schema.sql
-```
-
-Si ya tenías datos previos:
-
-```bash
-mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_telefonos.sql
-node scripts/migrate-phones.mjs
-mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_audit_correos.sql
-mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_correo_telefono_ids.sql
-mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_telefono_unico.sql
 ```
 
 ### Modelo de datos
@@ -43,13 +32,6 @@ usuarios (1) ──┬──< usuario_correos   (N)   ← usuarios.correo_id apu
 | `usuario_telefonos` | `usuario_id`, `telefono` único (ej. `+50241234567`) |
 
 Al crear un usuario: se inserta el registro → se crean correos/teléfonos → se guardan los IDs de referencia en `usuarios`.
-
-Si ya tenías el esquema anterior (texto en `correo`/`telefono`):
-
-```bash
-mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_correo_telefono_ids.sql
-mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_telefono_unico.sql
-```
 
 ## 2. Configuración
 
