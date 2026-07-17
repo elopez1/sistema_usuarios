@@ -1,4 +1,5 @@
 -- Esquema: teléfono en una sola columna (+50241234567)
+-- Correos y teléfonos con baja lógica (estado activo/inactivo)
 
 CREATE DATABASE IF NOT EXISTS sistema_usuarios
   CHARACTER SET utf8mb4
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS usuario_telefonos (
   id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   usuario_id INT(10) UNSIGNED NOT NULL,
   telefono VARCHAR(20) NOT NULL,
+  estado ENUM('activo', 'inactivo') NOT NULL DEFAULT 'activo',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_at_user_id INT(10) UNSIGNED NULL,
@@ -35,6 +37,7 @@ CREATE TABLE IF NOT EXISTS usuario_telefonos (
   PRIMARY KEY (id),
   UNIQUE KEY uk_telefono (telefono),
   KEY idx_telefonos_usuario (usuario_id),
+  KEY idx_telefonos_estado (estado),
   CONSTRAINT fk_telefonos_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
     ON DELETE CASCADE
@@ -44,6 +47,7 @@ CREATE TABLE IF NOT EXISTS usuario_correos (
   id INT(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   usuario_id INT(10) UNSIGNED NOT NULL,
   correo VARCHAR(180) NOT NULL,
+  estado ENUM('activo', 'inactivo') NOT NULL DEFAULT 'activo',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_at_user_id INT(10) UNSIGNED NULL,
@@ -51,6 +55,7 @@ CREATE TABLE IF NOT EXISTS usuario_correos (
   PRIMARY KEY (id),
   UNIQUE KEY uk_correo (correo),
   KEY idx_correos_usuario (usuario_id),
+  KEY idx_correos_estado (estado),
   CONSTRAINT fk_correos_usuario
     FOREIGN KEY (usuario_id) REFERENCES usuarios (id)
     ON DELETE CASCADE

@@ -1,7 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { normalizeTelefonoValue } from "@/lib/phones";
+import {
+  joinTelefonoUI,
+  onlyDigits,
+  PAISES_CA,
+  splitTelefonoUI,
+  type CodigoForm,
+} from "@/lib/phones";
 import type {
   EstadoUsuario,
   ImportResult,
@@ -31,23 +37,33 @@ function formatDate(value: string) {
   });
 }
 
+const LIST_PREVIEW_LIMIT = 2;
+
 function PhonesCell({ user }: { user: Usuario }) {
   const phones =
     user.telefonos?.length > 0
-      ? user.telefonos.map((t) => t.telefono)
+      ? user.telefonos
+          .filter((t) => (t.estado ?? "activo") === "activo")
+          .map((t) => t.telefono)
       : user.telefono
         ? [user.telefono]
         : [];
 
   if (!phones.length) return <span className="text-slate-400">—</span>;
 
+  const visible = phones.slice(0, LIST_PREVIEW_LIMIT);
+  const rest = phones.length - visible.length;
+
   return (
     <ul className="space-y-1">
-      {phones.map((tel) => (
+      {visible.map((tel) => (
         <li key={tel} className="font-mono text-xs text-slate-700">
           {tel}
         </li>
       ))}
+      {rest > 0 && (
+        <li className="text-xs text-slate-500">+{rest} más · Ver</li>
+      )}
     </ul>
   );
 }
@@ -55,21 +71,44 @@ function PhonesCell({ user }: { user: Usuario }) {
 function EmailsCell({ user }: { user: Usuario }) {
   const emails =
     user.correos?.length > 0
-      ? user.correos.map((c) => c.correo)
+      ? user.correos
+          .filter((c) => (c.estado ?? "activo") === "activo")
+          .map((c) => c.correo)
       : user.correo
         ? [user.correo]
         : [];
 
   if (!emails.length) return <span className="text-slate-400">—</span>;
 
+  const visible = emails.slice(0, LIST_PREVIEW_LIMIT);
+  const rest = emails.length - visible.length;
+
   return (
     <ul className="space-y-1">
-      {emails.map((correo) => (
+      {visible.map((correo) => (
         <li key={correo} className="text-xs text-slate-700">
           {correo}
         </li>
       ))}
+      {rest > 0 && (
+        <li className="text-xs text-slate-500">+{rest} más · Ver</li>
+      )}
     </ul>
+  );
+}
+
+function EstadoBadge({ estado }: { estado?: string }) {
+  const active = (estado ?? "activo") === "activo";
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${
+        active
+          ? "bg-emerald-100 text-emerald-800"
+          : "bg-slate-200 text-slate-600"
+      }`}
+    >
+      {active ? "activo" : "inactivo"}
+    </span>
   );
 }
 
@@ -192,18 +231,25 @@ export default function UsersManager() {
       if (!res.ok) throw new Error(full.error || "No se pudo cargar el usuario");
 
       const source = full as Usuario;
+      const activeEmails = (source.correos ?? [])
+        .filter((c) => (c.estado ?? "activo") === "activo")
+        .map((c) => c.correo);
+      const activePhones = (source.telefonos ?? [])
+        .filter((t) => (t.estado ?? "activo") === "activo")
+        .map((t) => ({
+          ...t,
+          telefono: t.telefono || "",
+        }));
+
       setEditing(source);
       setForm({
         nombre: source.nombre,
-        correos: source.correos?.length
-          ? source.correos.map((c) => c.correo)
-          : [source.correo || ""],
-        telefonos: source.telefonos?.length
-          ? source.telefonos.map((t) => ({
-              ...t,
-              telefono: t.telefono || "",
-            }))
-          : [emptyPhone()],
+        correos: activeEmails.length
+          ? activeEmails
+          : source.correo
+            ? [source.correo]
+            : [""],
+        telefonos: activePhones.length ? activePhones : [emptyPhone()],
       });
       setModalOpen(true);
     } catch (err) {
@@ -218,6 +264,21 @@ export default function UsersManager() {
         i === index ? { ...t, telefono: value } : t
       ),
     }));
+  }
+
+  function updatePhoneCodigo(index: number, codigo: CodigoForm) {
+    const current = form.telefonos[index]?.telefono ?? "";
+    const { local } = splitTelefonoUI(current);
+    updatePhone(index, joinTelefonoUI(codigo, local));
+  }
+
+  function updatePhoneLocal(index: number, localRaw: string) {
+    const current = form.telefonos[index]?.telefono ?? "";
+    const { codigo } = splitTelefonoUI(current);
+    const pais = PAISES_CA.find((p) => p.codigo === codigo);
+    const max = codigo === "otro" ? 15 : (pais?.digitos ?? 8);
+    const local = onlyDigits(localRaw).slice(0, max);
+    updatePhone(index, joinTelefonoUI(codigo, local));
   }
 
   function addPhone() {
@@ -688,14 +749,21 @@ export default function UsersManager() {
                     {(viewing.correos?.length
                       ? viewing.correos
                       : viewing.correo
-                        ? [{ id: viewing.correo_id ?? undefined, correo: viewing.correo }]
+                        ? [
+                            {
+                              id: viewing.correo_id ?? undefined,
+                              correo: viewing.correo,
+                              estado: "activo" as const,
+                            },
+                          ]
                         : []
                     ).map((c, i) => (
                       <li
                         key={c.id ?? `${c.correo}-${i}`}
-                        className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-slate-800"
+                        className="flex items-center justify-between gap-3 rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-slate-800"
                       >
-                        {c.correo}
+                        <span className="min-w-0 break-all">{c.correo}</span>
+                        <EstadoBadge estado={c.estado} />
                       </li>
                     ))}
                     {!viewing.correos?.length && !viewing.correo && (
@@ -710,16 +778,23 @@ export default function UsersManager() {
                   </p>
                   <ul className="mt-2 space-y-1.5">
                     {(viewing.telefonos?.length
-                      ? viewing.telefonos.map((t) => t.telefono)
+                      ? viewing.telefonos
                       : viewing.telefono
-                        ? [viewing.telefono]
+                        ? [
+                            {
+                              id: viewing.telefono_id ?? undefined,
+                              telefono: viewing.telefono,
+                              estado: "activo" as const,
+                            },
+                          ]
                         : []
-                    ).map((tel) => (
+                    ).map((t, i) => (
                       <li
-                        key={tel}
-                        className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800"
+                        key={t.id ?? `${t.telefono}-${i}`}
+                        className="flex items-center justify-between gap-3 rounded-md border border-slate-100 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-800"
                       >
-                        {tel}
+                        <span className="min-w-0 break-all">{t.telefono}</span>
+                        <EstadoBadge estado={t.estado} />
                       </li>
                     ))}
                     {!viewing.telefonos?.length && !viewing.telefono && (
@@ -818,6 +893,11 @@ export default function UsersManager() {
                     </div>
                   ))}
                 </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Al quitar un correo o teléfono se{" "}
+                  <strong>inactiva</strong> (no se borra). En Ver puedes ver
+                  activos e inactivos.
+                </p>
               </div>
 
               <div>
@@ -834,38 +914,77 @@ export default function UsersManager() {
                   </button>
                 </div>
                 <p className="mb-2 text-[11px] text-slate-500">
-                  Formato completo, ej. +50241234567 (o solo 8 dígitos para
-                  Guatemala).
+                  Elige el país; el número local se limita a los dígitos
+                  permitidos.
                 </p>
                 <div className="space-y-2">
-                  {form.telefonos.map((tel, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        required
-                        value={tel.telefono}
-                        onChange={(e) => updatePhone(index, e.target.value)}
-                        onBlur={() => {
-                          if (tel.telefono.trim()) {
-                            updatePhone(
+                  {form.telefonos.map((tel, index) => {
+                    const parts = splitTelefonoUI(tel.telefono);
+                    const pais = PAISES_CA.find(
+                      (p) => p.codigo === parts.codigo
+                    );
+                    const max =
+                      parts.codigo === "otro" ? 15 : (pais?.digitos ?? 8);
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex flex-col gap-2 sm:flex-row sm:items-center"
+                      >
+                        <select
+                          value={parts.codigo}
+                          onChange={(e) =>
+                            updatePhoneCodigo(
                               index,
-                              normalizeTelefonoValue(tel.telefono)
-                            );
+                              e.target.value as CodigoForm
+                            )
                           }
-                        }}
-                        placeholder="+50241234567"
-                        className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
-                      />
-                      {form.telefonos.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removePhone(index)}
-                          className="shrink-0 text-xs text-red-600 hover:underline"
+                          className="w-full shrink-0 rounded-md border border-slate-300 bg-white px-2 py-2 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 sm:w-52"
                         >
-                          Quitar
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                          {PAISES_CA.map((p) => (
+                            <option key={p.codigo} value={p.codigo}>
+                              {p.nombre} (+{p.codigo})
+                            </option>
+                          ))}
+                          <option value="otro">Otro (internacional)</option>
+                        </select>
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          {parts.codigo !== "otro" && (
+                            <span className="shrink-0 font-mono text-xs text-slate-500">
+                              +{parts.codigo}
+                            </span>
+                          )}
+                          <input
+                            required
+                            inputMode="numeric"
+                            value={parts.local}
+                            maxLength={max}
+                            onChange={(e) =>
+                              updatePhoneLocal(index, e.target.value)
+                            }
+                            placeholder={
+                              parts.codigo === "otro"
+                                ? "491701234567"
+                                : "1".repeat(max)
+                            }
+                            className="w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600"
+                          />
+                          <span className="shrink-0 text-[11px] tabular-nums text-slate-500">
+                            {parts.local.length}/{max}
+                          </span>
+                          {form.telefonos.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removePhone(index)}
+                              className="shrink-0 text-xs text-red-600 hover:underline"
+                            >
+                              Quitar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -905,9 +1024,10 @@ export default function UsersManager() {
               </h2>
               {!importResult && (
                 <p className="mt-1 text-sm text-slate-600">
-                  Acepta <strong>.csv</strong> o <strong>.xlsx</strong>. Al
-                  terminar verás el resumen y, si hubo fallos, la lista de
-                  registros que no pasaron con el motivo.
+                  Acepta <strong>.csv</strong> o <strong>.xlsx</strong>. Si
+                  varias filas tienen el <strong>mismo nombre</strong>, se
+                  tratan como la misma persona y se unen sus correos y
+                  teléfonos.
                 </p>
               )}
             </div>

@@ -16,6 +16,9 @@ mysql -h 127.0.0.1 -P 8889 -u root < sql/schema.sql
 
 # Si usas MAMP:
 # /Applications/MAMP/Library/bin/mysql -h 127.0.0.1 -P 8889 -u root < sql/schema.sql
+
+# Si ya tenías la BD sin estado en contactos:
+# mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_estado_contactos.sql
 ```
 
 ### Modelo de datos
@@ -45,10 +48,10 @@ DB_PORT=8889
 DB_USER=root
 DB_PASSWORD=
 DB_NAME=sistema_usuarios
-ACTOR_USER_ID=1
+# Opcional. Si no se define, created_at_user_id / updated_at_user_id
+# usan el id del propio usuario.
+# ACTOR_USER_ID=1
 ```
-
-En la UI, el campo **ID operador** envía quién realiza cada acción (`X-Actor-User-Id`).
 
 ## 3. Instalar y levantar
 
@@ -61,8 +64,8 @@ Abre [http://localhost:3000](http://localhost:3000).
 
 ## Funcionalidades
 
-1. CRUD con varios **correos** y **teléfonos**
-2. Inactivar (baja lógica)
+1. CRUD con varios **correos** y **teléfonos** (baja lógica también en contactos)
+2. Inactivar usuario (baja lógica)
 3. Teléfonos Centroamérica + opción Otro (Europa)
 4. Búsqueda / filtro
 5. Importación CSV / Excel (parcial)
@@ -71,14 +74,13 @@ Abre [http://localhost:3000](http://localhost:3000).
 ## Importación CSV / Excel
 
 - Formatos: **`.csv`** y **`.xlsx`**
-- Encabezados flexibles (mayúsculas, tildes, espacios): `NomBRE`, `cOrreo`, `TELefono`, `Teléfono`, `CóDIGO_PAÍS`, etc.
-- **Importación parcial:** si de 100 filas falla 1, se guardan las 99 y se reporta el error de la fila fallida.
-- **Sin duplicados al reimportar:** si vuelves a subir los 100 (con el error corregido), los 99 existentes se **actualizan** por correo y el corregido se **inserta**. La clave es el correo (único).
+- Encabezados flexibles (mayúsculas, tildes, espacios): `NomBRE`, `cOrreo`, `TELefono`, etc.
+- **Misma persona en varias filas:** si se repite el **mismo nombre**, se unen correos y teléfonos en **un solo usuario**.
+- **Importación parcial:** si un grupo falla, el resto se guarda y se reporta el error.
+- **Sin duplicados al reimportar:** si el correo (o el nombre) ya existe, se **actualiza** y se agregan los contactos nuevos.
 
-Columnas reconocidas: `nombre`, `correo`/`correos`, `telefono`/`telefonos`.
-El teléfono se guarda completo en una sola columna (ej. `+50241234567`).
-Si viene sin código y tiene 8 dígitos, se asume Guatemala. Si viene con código duplicado (`+502502…`), se corrige.
-Varios valores en una celda separados por `|` o `;`.
+Columnas: `nombre`, `correo`/`correos`, `telefono`/`telefonos`.
+También puedes poner varios valores en una celda separados por `|` o `;`.
 
 ## API
 

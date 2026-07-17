@@ -1,4 +1,5 @@
 export type EstadoUsuario = "activo" | "inactivo";
+export type EstadoContacto = "activo" | "inactivo";
 
 export interface AuditFields {
   created_at: string;
@@ -11,11 +12,13 @@ export interface TelefonoUsuario extends Partial<AuditFields> {
   id?: number;
   /** Teléfono completo, ej. +50241234567 */
   telefono: string;
+  estado?: EstadoContacto;
 }
 
 export interface CorreoUsuario extends Partial<AuditFields> {
   id?: number;
   correo: string;
+  estado?: EstadoContacto;
 }
 
 export interface Usuario extends AuditFields {

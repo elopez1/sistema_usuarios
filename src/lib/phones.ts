@@ -140,3 +140,50 @@ export function normalizeTelefonoValue(raw: string): string {
   const parsed = parseTelefonoFlexible(raw);
   return parsed?.telefono ?? formatTelefonoE164(raw);
 }
+
+/** Código de país en el formulario (+ opción internacional). */
+export type CodigoForm = CodigoPaisCA | "otro";
+
+export function getPaisByCodigo(codigo: string): PaisTelefono | undefined {
+  return PAISES_CA.find((p) => p.codigo === codigo);
+}
+
+/** Separa un E.164 en país + número local para el formulario. */
+export function splitTelefonoUI(raw: string): {
+  codigo: CodigoForm;
+  local: string;
+} {
+  const digits = onlyDigits(raw);
+  if (!digits) {
+    return { codigo: DEFAULT_CODIGO_PAIS, local: "" };
+  }
+
+  for (const p of PAISES_CA) {
+    if (!digits.startsWith(p.codigo)) continue;
+    const local = digits.slice(p.codigo.length);
+    if (local.length <= p.digitos) {
+      return { codigo: p.codigo, local };
+    }
+  }
+
+  // Solo dígitos locales (sin código) → Guatemala por defecto
+  const def = getPaisByCodigo(DEFAULT_CODIGO_PAIS)!;
+  if (digits.length <= def.digitos && !String(raw).trim().startsWith("+")) {
+    return { codigo: DEFAULT_CODIGO_PAIS, local: digits };
+  }
+
+  return { codigo: "otro", local: digits };
+}
+
+/** Une país + local al formato que guarda la app. */
+export function joinTelefonoUI(codigo: CodigoForm, local: string): string {
+  const digits = onlyDigits(local);
+  if (codigo === "otro") {
+    return digits ? `+${digits}` : "";
+  }
+  const pais = getPaisByCodigo(codigo);
+  const max = pais?.digitos ?? 8;
+  const localPart = digits.slice(0, max);
+  if (!localPart) return "";
+  return `+${codigo}${localPart}`;
+}
