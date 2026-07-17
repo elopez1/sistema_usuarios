@@ -1,7 +1,3 @@
-/**
- * Teléfonos como un solo valor E.164: +50241234567
- * (sin separar código y número en columnas distintas)
- */
 
 export type CodigoPaisCA =
   | "501"
@@ -34,16 +30,12 @@ export function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
 
-/** Normaliza a formato +XXXXXXXX (solo dígitos con +). */
 export function formatTelefonoE164(value: string): string {
   const digits = onlyDigits(value);
   return digits ? `+${digits}` : "";
 }
 
-/**
- * Interpreta un teléfono escrito de muchas formas:
- * +50241234567 | 50241234567 | 41234567 | +50250241234567 (código duplicado)
- */
+
 export function parseTelefonoFlexible(
   raw: string,
   defaultCodigo: CodigoPaisCA = DEFAULT_CODIGO_PAIS
@@ -65,7 +57,6 @@ export function parseTelefonoFlexible(
     }
   }
 
-  // Exacto: código CA + dígitos locales
   for (const p of PAISES_CA) {
     if (
       digits.startsWith(p.codigo) &&
@@ -75,13 +66,11 @@ export function parseTelefonoFlexible(
     }
   }
 
-  // Solo dígitos locales del país por defecto (ej. GT 8)
   const def = PAISES_CA.find((p) => p.codigo === defaultCodigo)!;
   if (digits.length === def.digitos) {
     return { telefono: `+${defaultCodigo}${digits}` };
   }
 
-  // Internacional genérico: + y 8–15 dígitos totales
   if (digits.length >= 8 && digits.length <= 15) {
     return { telefono: `+${digits}` };
   }
@@ -110,7 +99,6 @@ export function validateTelefonoValue(raw: string): string | null {
     }
   }
 
-  // Otros países: 8–15 dígitos con +
   if (digits.length < 8 || digits.length > 15) {
     return "El teléfono internacional debe tener entre 8 y 15 dígitos.";
   }
@@ -140,21 +128,24 @@ export function normalizeTelefonoValue(raw: string): string {
   const parsed = parseTelefonoFlexible(raw);
   return parsed?.telefono ?? formatTelefonoE164(raw);
 }
-
-/** Código de país en el formulario (+ opción internacional). */
 export type CodigoForm = CodigoPaisCA | "otro";
 
 export function getPaisByCodigo(codigo: string): PaisTelefono | undefined {
   return PAISES_CA.find((p) => p.codigo === codigo);
 }
 
-/** Separa un E.164 en país + número local para el formulario. */
 export function splitTelefonoUI(raw: string): {
   codigo: CodigoForm;
   local: string;
 } {
+  const trimmed = String(raw ?? "").trim();
   const digits = onlyDigits(raw);
+
+  // Solo "+" = país "Otro" sin dígitos aún (crear usuario vacío).
   if (!digits) {
+    if (trimmed === "+") {
+      return { codigo: "otro", local: "" };
+    }
     return { codigo: DEFAULT_CODIGO_PAIS, local: "" };
   }
 
@@ -166,24 +157,24 @@ export function splitTelefonoUI(raw: string): {
     }
   }
 
-  // Solo dígitos locales (sin código) → Guatemala por defecto
   const def = getPaisByCodigo(DEFAULT_CODIGO_PAIS)!;
-  if (digits.length <= def.digitos && !String(raw).trim().startsWith("+")) {
+  if (digits.length <= def.digitos && !trimmed.startsWith("+")) {
     return { codigo: DEFAULT_CODIGO_PAIS, local: digits };
   }
 
   return { codigo: "otro", local: digits };
 }
 
-/** Une país + local al formato que guarda la app. */
 export function joinTelefonoUI(codigo: CodigoForm, local: string): string {
   const digits = onlyDigits(local);
   if (codigo === "otro") {
-    return digits ? `+${digits}` : "";
+    // Conservar selección aunque el local esté vacío (antes se perdía al crear).
+    return digits ? `+${digits}` : "+";
   }
   const pais = getPaisByCodigo(codigo);
   const max = pais?.digitos ?? 8;
   const localPart = digits.slice(0, max);
-  if (!localPart) return "";
+  // Guardar +código aunque aún no haya dígitos locales, para que el select
+  // de país no vuelva a Guatemala/8 al crear un usuario nuevo.
   return `+${codigo}${localPart}`;
 }

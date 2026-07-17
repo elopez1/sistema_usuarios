@@ -187,7 +187,6 @@ function mapUsuario(
   };
 }
 
-/** Elimina usuarios sin contactos (restos de fusión). */
 async function deleteEmptyUsers(
   connection: PoolConnection,
   candidateIds: number[],
@@ -213,7 +212,6 @@ async function deleteEmptyUsers(
   }
 }
 
-/** Sincroniza teléfonos: los quitados se inactivan (no se borran). */
 async function replaceTelefonos(
   connection: PoolConnection,
   usuarioId: number,
@@ -336,7 +334,6 @@ async function replaceTelefonos(
   return firstId;
 }
 
-/** Sincroniza correos: los quitados se inactivan (no se borran). */
 async function replaceCorreos(
   connection: PoolConnection,
   usuarioId: number,
@@ -566,7 +563,6 @@ export async function createUsuario(input: UsuarioInput): Promise<Usuario> {
   try {
     await connection.beginTransaction();
 
-    // 1) Usuario sin referencias aún
     const [result] = await connection.execute<ResultSetHeader>(
       `INSERT INTO usuarios
         (nombre, correo_id, telefono_id, estado, created_at_user_id, updated_at_user_id)
@@ -576,7 +572,6 @@ export async function createUsuario(input: UsuarioInput): Promise<Usuario> {
     );
 
     const usuarioId = result.insertId;
-    // Si no hay operador, la auditoría usa el id del propio usuario
     const actor = actorPref ?? usuarioId;
     if (actorPref == null) {
       await connection.execute(
@@ -587,7 +582,6 @@ export async function createUsuario(input: UsuarioInput): Promise<Usuario> {
       );
     }
 
-    // 2) Correos y teléfonos → 3) actualizar IDs de referencia
     await replaceCorreos(connection, usuarioId, data.correos, actor);
     await replaceTelefonos(connection, usuarioId, data.telefonos, actor);
 
@@ -659,7 +653,6 @@ export async function updateUsuario(
   }
 }
 
-/** Baja lógica: inactiva el registro (no lo borra). */
 export async function deleteUsuario(
   id: number,
   actorUserId: number | null = null
@@ -745,7 +738,6 @@ function collectPhones(raw: ImportRawRow): string[] {
     .filter(Boolean);
 }
 
-/** Agrupa filas con el mismo nombre (misma persona) y fusiona correos/teléfonos. */
 function groupImportRows(rows: ImportRawRow[]): ImportGroup[] {
   const map = new Map<string, ImportGroup>();
   const order: string[] = [];
@@ -847,10 +839,7 @@ function dedupeUsersById(
   return [...map.values()];
 }
 
-/**
- * Absorbe usuarios duplicados (mismo nombre) en el canónico:
- * mueve correos/teléfonos y elimina los registros sobrantes.
- */
+
 async function absorbDuplicateUsuarios(
   connection: PoolConnection,
   canonicalId: number,
@@ -1001,7 +990,6 @@ export async function importUsuarios(
 
       const related = dedupeUsersById([...byEmail, ...byPhone, ...byName]);
 
-      // Contactos que pertenecen a otra persona (nombre distinto) → conflicto real
       const foreign = related.filter(
         (u) => normalizeNombreKey(u.nombre) !== nameKey
       );
@@ -1021,7 +1009,6 @@ export async function importUsuarios(
 
       if (usuarioId != null) {
         const actor = actorUserId ?? usuarioId;
-        // Une todos los "Luis Ramirez" previos en un solo registro
         await absorbDuplicateUsuarios(
           connection,
           usuarioId,

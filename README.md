@@ -1,94 +1,127 @@
-# Sistema de Gestión de Usuarios
+# Sistema de usuarios
 
-Mini sistema interno para administrar usuarios de una plataforma.
+CRUD interno de usuarios con varios correos/teléfonos, búsqueda, filtro por estado e importación masiva CSV/Excel.
 
-**Stack:** Next.js (App Router) + TypeScript + MySQL (`mysql2`, sin ORM).
+## Tecnologías
 
-## Requisitos
+- **Next.js 16** (App Router) + **React 19** + **TypeScript**
+- **MySQL** + **mysql2**
+- **Tailwind CSS 4**
+- **xlsx** (importación Excel)
 
-- Node.js 20+
-- MySQL en ejecución (por ejemplo MAMP / TablePlus en el puerto `8889`)
+## Requisitos previos
 
-## 1. Base de datos
+En la máquina donde se va a correr:
+
+| Requisito | Notas |
+|-----------|--------|
+| **Node.js 20+** | Incluye `npm`. Verificar con `node -v`. |
+| **MySQL** | Local (MAMP, Homebrew, Docker, etc.). Debe estar **encendido** antes de usar la app. |
+| **Git** | Para clonar el repositorio. |
+
+## Cómo ejecutar en otra máquina
+
+### 1. Clonar el repositorio
 
 ```bash
+git clone <URL_DEL_REPO> sistema_usuarios
+cd sistema_usuarios
+```
+
+Si el código vive en la rama `develop`:
+
+```bash
+git checkout develop
+```
+
+> No hace falta `git init`: al clonar el repositorio ya viene con Git.
+
+### 2. Instalar dependencias
+
+```bash
+npm install
+```
+
+### 3. Crear la base de datos
+
+Con MySQL en marcha, aplica el esquema:
+
+```bash
+# Puerto por defecto de MySQL (3306):
+mysql -h 127.0.0.1 -P 3306 -u root -p < sql/schema.sql
+
+# Si usas MAMP en macOS, el puerto suele ser 8889:
 mysql -h 127.0.0.1 -P 8889 -u root < sql/schema.sql
-
-# Si usas MAMP:
-# /Applications/MAMP/Library/bin/mysql -h 127.0.0.1 -P 8889 -u root < sql/schema.sql
-
-# Si ya tenías la BD sin estado en contactos:
-# mysql -h 127.0.0.1 -P 8889 -u root < sql/migration_estado_contactos.sql
 ```
 
-### Modelo de datos
+Eso crea la base `sistema_usuarios` y las tablas `usuarios`, `usuario_correos`, `usuario_telefonos`.
 
-```
-usuarios (1) ──┬──< usuario_correos   (N)   ← usuarios.correo_id apunta al de referencia
-               └──< usuario_telefonos (N)   ← usuarios.telefono_id apunta al de referencia
-```
+> Solo si la base **ya existía** de una versión anterior (sin `estado` en contactos), aplica también:
+> `mysql ... < sql/migration_estado_contactos.sql`
 
-| Tabla | Campos clave |
-|--------|----------------|
-| `usuarios` | `nombre`, `correo_id`, `telefono_id`, `estado`, auditoría |
-| `usuario_correos` | `usuario_id`, `correo` (único) |
-| `usuario_telefonos` | `usuario_id`, `telefono` único (ej. `+50241234567`) |
-
-Al crear un usuario: se inserta el registro → se crean correos/teléfonos → se guardan los IDs de referencia en `usuarios`.
-
-## 2. Configuración
+### 4. Configurar variables de entorno
 
 ```bash
 cp .env.example .env.local
 ```
 
+Edita `.env.local` con los datos de **tu** MySQL:
+
 ```env
-DB_HOST=127.0.0.1
-DB_PORT=8889
-DB_USER=root
+DB_HOST=
+DB_PORT=
+DB_USER=
 DB_PASSWORD=
-DB_NAME=sistema_usuarios
-# Opcional. Si no se define, created_at_user_id / updated_at_user_id
-# usan el id del propio usuario.
-# ACTOR_USER_ID=1
+DB_NAME=
 ```
 
-## 3. Instalar y levantar
+Ajusta `DB_PORT` / `DB_PASSWORD` según tu instalación (MAMP → a menudo `8889` y contraseña vacía).
+
+Opcional: `ACTOR_USER_ID` para auditoría (ver comentarios en `.env.example`).
+
+
+### 5. Levantar la aplicación
 
 ```bash
-npm install
 npm run dev
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-## Funcionalidades
+Para producción local:
 
-1. CRUD con varios **correos** y **teléfonos** (baja lógica también en contactos)
-2. Inactivar usuario (baja lógica)
-3. Teléfonos Centroamérica + opción Otro (Europa)
-4. Búsqueda / filtro
-5. Importación CSV / Excel (parcial)
-6. Auditoría de creación y modificación
+```bash
+npm run build
+npm run start
+```
 
-## Importación CSV / Excel
+## Plantilla de importación
 
-- Formatos: **`.csv`** y **`.xlsx`**
-- Encabezados flexibles (mayúsculas, tildes, espacios): `NomBRE`, `cOrreo`, `TELefono`, etc.
-- **Misma persona en varias filas:** si se repite el **mismo nombre**, se unen correos y teléfonos en **un solo usuario**.
-- **Importación parcial:** si un grupo falla, el resto se guarda y se reporta el error.
-- **Sin duplicados al reimportar:** si el correo (o el nombre) ya existe, se **actualiza** y se agregan los contactos nuevos.
+Hay un CSV de ejemplo en `public/plantilla-usuarios.csv` (columnas `nombre`, `correo`, `telefono`). También se puede subir `.xlsx`.
 
-Columnas: `nombre`, `correo`/`correos`, `telefono`/`telefonos`.
-También puedes poner varios valores en una celda separados por `|` o `;`.
-
-## API
+## API (resumen)
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/users` | Listar |
+| GET | `/api/users` | Listar (`q`, `estado`, `page`, `limit`) |
 | POST | `/api/users` | Crear |
 | GET | `/api/users/:id` | Detalle |
-| PUT | `/api/users/:id` | Actualizar (`updated_at_user_id`) |
-| DELETE | `/api/users/:id` | Inactivar |
-| POST | `/api/users/import` | Importar CSV / XLSX |
+| PUT | `/api/users/:id` | Actualizar |
+| DELETE | `/api/users/:id` | Inactivar (baja lógica) |
+| POST | `/api/users/import` | Importar CSV / XLSX (`FormData` campo `file`) |
+
+## Problemas frecuentes
+
+| Síntoma | Qué revisar |
+|---------|-------------|
+| Error de conexión a MySQL | MySQL encendido; `DB_HOST` / `DB_PORT` / usuario / contraseña en `.env.local`. |
+| Base o tablas no existen | Ejecutar `sql/schema.sql`. |
+| Puerto 3306 vs 8889 | MAMP suele usar **8889**; MySQL “normal” usa **3306**. |
+| `npm` no encontrado | Instalar Node.js 20+. |
+| Página vacía / API falla | Reiniciar `npm run dev` después de crear o cambiar `.env.local`. |
+
+## Más documentación
+
+- `COMO_FUNCIONA_EL_CODIGO.md` — arquitectura y funciones del código
+- `GUIA_PRESENTACION.md` — defensa / explicación oral
+- `sql/schema.sql` — modelo de datos

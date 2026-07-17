@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 
-/** Lee el ID del operador desde header o body para auditoría. */
 export function resolveActorUserId(
   request: NextRequest,
   body?: { actor_user_id?: number | null }

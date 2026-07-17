@@ -18,7 +18,9 @@ import type {
 } from "@/lib/types";
 
 function emptyPhone(): TelefonoUsuario {
-  return { telefono: "" };
+  // Prefijo de país por defecto para que el select conserve la elección
+  // aunque el número local aún esté vacío (mismo comportamiento que en editar).
+  return { telefono: joinTelefonoUI("502", "") };
 }
 
 const emptyForm: UsuarioInput = {
@@ -135,6 +137,11 @@ export default function UsersManager() {
   const [importing, setImporting] = useState(false);
   const [importElapsed, setImportElapsed] = useState(0);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+
+  const [confirmInactivate, setConfirmInactivate] = useState<Usuario | null>(
+    null
+  );
+  const [inactivating, setInactivating] = useState(false);
 
   async function loadUsers(opts?: {
     q?: string;
@@ -346,30 +353,38 @@ export default function UsersManager() {
     }
   }
 
-  async function onInactivate(user: Usuario) {
-    if (
-      !confirm(
-        `¿Inactivar a ${user.nombre}? El registro no se elimina, solo queda inactivo.`
-      )
-    ) {
-      return;
-    }
+  function askInactivate(user: Usuario) {
+    setConfirmInactivate(user);
+  }
+
+  async function confirmInactivateYes() {
+    const user = confirmInactivate;
+    if (!user) return;
+
+    setInactivating(true);
+    setError(null);
     try {
       const res = await fetch(`/api/users/${user.id}`, {
         method: "DELETE",
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo inactivar");
+      setConfirmInactivate(null);
       setNotice("Usuario inactivado.");
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al inactivar");
+    } finally {
+      setInactivating(false);
     }
   }
 
   async function onToggleEstado(user: Usuario) {
-    const next: EstadoUsuario =
-      user.estado === "activo" ? "inactivo" : "activo";
+    if (user.estado === "activo") {
+      askInactivate(user);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/users/${user.id}`, {
         method: "PUT",
@@ -378,12 +393,12 @@ export default function UsersManager() {
           nombre: user.nombre,
           correos: user.correos?.map((c) => c.correo) ?? [user.correo],
           telefonos: user.telefonos,
-          estado: next,
+          estado: "activo",
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo actualizar");
-      setNotice(`Estado cambiado a ${next}.`);
+      setNotice("Estado cambiado a activo.");
       await loadUsers();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al actualizar");
@@ -630,7 +645,7 @@ export default function UsersManager() {
                         {user.estado === "activo" && (
                           <button
                             type="button"
-                            onClick={() => onInactivate(user)}
+                            onClick={() => askInactivate(user)}
                             className="text-sm font-medium text-red-600 hover:underline"
                           >
                             Inactivar
@@ -893,11 +908,6 @@ export default function UsersManager() {
                     </div>
                   ))}
                 </div>
-                <p className="mt-2 text-[11px] text-slate-500">
-                  Al quitar un correo o teléfono se{" "}
-                  <strong>inactiva</strong> (no se borra). En Ver puedes ver
-                  activos e inactivos.
-                </p>
               </div>
 
               <div>
@@ -1202,6 +1212,49 @@ export default function UsersManager() {
           <p className="mt-1 text-sm text-slate-200">
             {formatElapsed(importElapsed)}
           </p>
+        </div>
+      )}
+
+      {confirmInactivate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="confirm-inactivate-title"
+            className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl"
+          >
+            <h2
+              id="confirm-inactivate-title"
+              className="text-lg font-semibold text-slate-900"
+            >
+              ¿Inactivar registro?
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              ¿Seguro que quieres inactivar a{" "}
+              <span className="font-medium text-slate-900">
+                {confirmInactivate.nombre}
+              </span>
+              ? El registro no se elimina, solo queda inactivo.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                disabled={inactivating}
+                onClick={() => setConfirmInactivate(null)}
+                className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                No
+              </button>
+              <button
+                type="button"
+                disabled={inactivating}
+                onClick={confirmInactivateYes}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {inactivating ? "Inactivando…" : "Sí, inactivar"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

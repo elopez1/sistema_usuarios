@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
       codigo_pais: row.codigo_pais,
     }));
 
-    // Importación parcial: guarda los válidos y reporta errores fila a fila
     const result = await importUsuarios(payload, actor_user_id);
     return NextResponse.json(result);
   } catch (err) {

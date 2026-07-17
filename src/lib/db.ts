@@ -1,7 +1,6 @@
 import mysql, { Pool, ResultSetHeader, RowDataPacket } from "mysql2/promise";
 
 declare global {
-  // eslint-disable-next-line no-var
   var mysqlPool: Pool | undefined;
 }
 

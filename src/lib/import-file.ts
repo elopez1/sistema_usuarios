@@ -1,7 +1,4 @@
-/**
- * Normalización de encabezados y parseo CSV / XLSX.
- * Acepta variaciones: NomBRE, cOrreo, TELefono, Teléfono, etc.
- */
+
 
 import * as XLSX from "xlsx";
 
@@ -32,7 +29,6 @@ const HEADER_ALIASES: Record<string, string> = {
   status: "estado",
 };
 
-/** Quita tildes, pasa a minúsculas y deja solo [a-z0-9_]. */
 export function normalizeHeaderKey(raw: string): string {
   return String(raw ?? "")
     .normalize("NFD")
@@ -58,7 +54,6 @@ function mapRowKeys(row: Record<string, unknown>): ImportRow {
     if (!mappedKey) continue;
     const str =
       value == null || value === undefined ? "" : String(value).trim();
-    // Si hay columnas duplicadas (correo + Correo), concatenar con |
     if (mapped[mappedKey] && str) {
       mapped[mappedKey] = `${mapped[mappedKey]}|${str}`;
     } else if (!mapped[mappedKey]) {

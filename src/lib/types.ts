@@ -10,7 +10,6 @@ export interface AuditFields {
 
 export interface TelefonoUsuario extends Partial<AuditFields> {
   id?: number;
-  /** Teléfono completo, ej. +50241234567 */
   telefono: string;
   estado?: EstadoContacto;
 }
@@ -26,9 +25,7 @@ export interface Usuario extends AuditFields {
   nombre: string;
   correo_id: number | null;
   telefono_id: number | null;
-  /** Correo de referencia (resuelto) */
   correo: string;
-  /** Teléfono de referencia (resuelto) */
   telefono: string;
   correos: CorreoUsuario[];
   telefonos: TelefonoUsuario[];
@@ -65,7 +62,6 @@ export interface ImportResult {
   errors: {
     row: number;
     message: string;
-    /** Resumen del registro (nombre, correo, etc.) */
     data?: string;
   }[];
   total: number;
