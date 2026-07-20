@@ -11,7 +11,6 @@ CRUD interno de usuarios con varios correos/teléfonos, búsqueda, filtro por es
 
 ## Requisitos previos
 
-En la máquina donde se va a correr:
 
 | Requisito | Notas |
 |-----------|--------|
@@ -19,7 +18,6 @@ En la máquina donde se va a correr:
 | **MySQL** | Local (MAMP, Homebrew, Docker, etc.). Debe estar **encendido** antes de usar la app. |
 | **Git** | Para clonar el repositorio. |
 
-## Cómo ejecutar en otra máquina
 
 ### 1. Clonar el repositorio
 
@@ -61,11 +59,9 @@ Eso crea la base `sistema_usuarios` y las tablas `usuarios`, `usuario_correos`, 
 
 ### 4. Configurar variables de entorno
 
-```bash
-cp .env.example .env.local
-```
 
-Edita `.env.local` con los datos de **tu** MySQL:
+
+Edita `.env` con los datos de **tu** MySQL:
 
 ```env
 DB_HOST=
@@ -88,10 +84,9 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-Para producción local:
+Para ejecutar proyecto de forma local:
 
 ```bash
-npm run build
 npm run start
 ```
 
@@ -109,19 +104,3 @@ Hay un CSV de ejemplo en `public/plantilla-usuarios.csv` (columnas `nombre`, `co
 | PUT | `/api/users/:id` | Actualizar |
 | DELETE | `/api/users/:id` | Inactivar (baja lógica) |
 | POST | `/api/users/import` | Importar CSV / XLSX (`FormData` campo `file`) |
-
-## Problemas frecuentes
-
-| Síntoma | Qué revisar |
-|---------|-------------|
-| Error de conexión a MySQL | MySQL encendido; `DB_HOST` / `DB_PORT` / usuario / contraseña en `.env.local`. |
-| Base o tablas no existen | Ejecutar `sql/schema.sql`. |
-| Puerto 3306 vs 8889 | MAMP suele usar **8889**; MySQL “normal” usa **3306**. |
-| `npm` no encontrado | Instalar Node.js 20+. |
-| Página vacía / API falla | Reiniciar `npm run dev` después de crear o cambiar `.env.local`. |
-
-## Más documentación
-
-- `COMO_FUNCIONA_EL_CODIGO.md` — arquitectura y funciones del código
-- `GUIA_PRESENTACION.md` — defensa / explicación oral
-- `sql/schema.sql` — modelo de datos
