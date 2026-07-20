@@ -11,7 +11,6 @@ CRUD interno de usuarios con varios correos/teléfonos, búsqueda, filtro por es
 
 ## Requisitos previos
 
-En la máquina donde se va a correr:
 
 | Requisito | Notas |
 |-----------|--------|
@@ -62,10 +61,10 @@ Eso crea la base `sistema_usuarios` y las tablas `usuarios`, `usuario_correos`, 
 ### 4. Configurar variables de entorno
 
 ```bash
-cp .env.example .env.local
+cp .env
 ```
 
-Edita `.env.local` con los datos de **tu** MySQL:
+Edita `.env` con los datos de **tu** MySQL:
 
 ```env
 DB_HOST=
@@ -88,10 +87,9 @@ npm run dev
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-Para producción local:
+Para ejecutar proyecto de forma local:
 
 ```bash
-npm run build
 npm run start
 ```
 
@@ -120,8 +118,3 @@ Hay un CSV de ejemplo en `public/plantilla-usuarios.csv` (columnas `nombre`, `co
 | `npm` no encontrado | Instalar Node.js 20+. |
 | Página vacía / API falla | Reiniciar `npm run dev` después de crear o cambiar `.env.local`. |
 
-## Más documentación
-
-- `COMO_FUNCIONA_EL_CODIGO.md` — arquitectura y funciones del código
-- `GUIA_PRESENTACION.md` — defensa / explicación oral
-- `sql/schema.sql` — modelo de datos
